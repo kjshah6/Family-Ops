@@ -1,0 +1,31 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DATABASE_URL_UNPOOLED")
+}
+
+// --- better-auth will add User, Session, Account, Passkey models here ---
+// Run `npm run auth:generate` after setting up better-auth to append them
+// automatically, then `npm run db:push` to sync the database.
+
+model Kid {
+  id        String          @id @default(cuid())
+  slug      String          @unique // "nyra" | "eve" | "jack"
+  name      String
+  initials  String
+  entries   ScheduleEntry[]
+}
+
+model ScheduleEntry {
+  id         String   @id @default(cuid())
+  kidId      String
+  kid        Kid      @relation(fields: [kidId], references: [id], onDelete: Cascade)
+  category   String   // "sports" | "classes" | "pickup"
+  data       Json     // flexible per-category fields (title, day, time, location, etc.)
+  createdAt  DateTime @default(now())
+  createdBy  String?  // email of the parent who added it
+}

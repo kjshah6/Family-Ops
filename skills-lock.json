@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "skills": {
+    "neon": {
+      "source": "/private/tmp/claude-501/-Users-kjshah-Library-CloudStorage-OneDrive-Personal-Projects-family-schedule-app/57f79ab9-35f1-462b-92dc-0e2c8ff1eefb/scratchpad/agent-skills-src",
+      "sourceType": "local",
+      "computedHash": "a008e354dade553f451dd1d8a33872cdeb8d3ff8ea1efbc3f561c7f3119c760a"
+    },
+    "neon-postgres": {
+      "source": "/private/tmp/claude-501/-Users-kjshah-Library-CloudStorage-OneDrive-Personal-Projects-family-schedule-app/57f79ab9-35f1-462b-92dc-0e2c8ff1eefb/scratchpad/agent-skills-src",
+      "sourceType": "local",
+      "computedHash": "9386efb7f97bd96f01d0c84f467e8e6e41be54f73cc1ece9c92f4f1dbd76f10f"
+    }
+  }
+}
