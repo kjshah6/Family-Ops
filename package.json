@@ -8,9 +8,11 @@
     "start": "next start",
     "db:generate": "dotenv -e .env.local -- prisma generate",
     "db:push": "dotenv -e .env.local -- prisma db push",
+    "db:seed": "dotenv -e .env.local -- node prisma/seed.mjs",
     "auth:generate": "dotenv -e .env.local -- npx @better-auth/cli generate"
   },
   "dependencies": {
+    "@better-auth/passkey": "^1.7.2",
     "@prisma/client": "^5.20.0",
     "better-auth": "^1.1.0",
     "lucide-react": "^0.383.0",

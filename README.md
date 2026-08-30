@@ -48,7 +48,7 @@ After the first deploy, run locally (pointed at your production `DATABASE_URL`):
 npm install
 npm run auth:generate   # adds better-auth's User/Session/Passkey tables to schema.prisma
 npm run db:push         # creates all tables in Postgres
-node prisma/seed.mjs    # creates the Nyra/Eve/Jack records
+npm run db:seed         # creates the Nyra/Eve/Jack records
 ```
 
 ## 6. Sign in

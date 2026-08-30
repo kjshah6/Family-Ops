@@ -1,6 +1,6 @@
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
-import { passkey } from "better-auth/plugins/passkey";
+import { passkey } from "@better-auth/passkey";
 import { magicLink } from "better-auth/plugins/magic-link";
 import { Resend } from "resend";
 import { db } from "./db";
