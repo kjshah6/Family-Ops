@@ -8,6 +8,16 @@ import { isAllowedParent } from "./allowlist";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
+// Dev-only: holds the most recently generated magic-link token so the local
+// /api/dev-login shortcut can complete sign-in without an inbox round-trip.
+// Never read or set outside of NODE_ENV !== "production". Exposed through a
+// getter (rather than a plain export) so callers always see the current
+// value regardless of how the bundler compiles the module's exports.
+let lastDevMagicLinkToken: string | null = null;
+export function getLastDevMagicLinkToken() {
+  return lastDevMagicLinkToken;
+}
+
 export const auth = betterAuth({
   database: prismaAdapter(db, { provider: "postgresql" }),
 
@@ -20,6 +30,15 @@ export const auth = betterAuth({
     magicLink({
       sendMagicLink: async ({ email, url }: { email: string; url: string }) => {
         if (!isAllowedParent(email)) return; // silently ignore non-approved emails
+
+        // Local dev: print the link instead of requiring a real inbox round-trip,
+        // and stash the token for the /api/dev-login shortcut.
+        if (process.env.NODE_ENV !== "production") {
+          console.log(`\n🔗 Sign-in link for ${email}:\n${url}\n`);
+          lastDevMagicLinkToken = new URL(url).searchParams.get("token");
+          return;
+        }
+
         await resend.emails.send({
           from: "Family Roster <onboarding@resend.dev>",
           to: email,
