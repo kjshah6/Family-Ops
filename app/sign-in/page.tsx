@@ -26,8 +26,8 @@ export default function SignInPage() {
   return (
     <div style={{ background: COLORS.ivory, minHeight: "100vh" }} className="flex items-center justify-center px-5">
       <div style={{ background: "#fff", border: `1px solid ${COLORS.gold}`, borderRadius: 8 }} className="w-full max-w-sm p-8 text-center">
-        <h1 style={{ color: COLORS.navy, fontWeight: 700, fontSize: 22 }} className="mb-1">Family Roster</h1>
-        <p style={{ color: "#6B6357" }} className="text-sm mb-6">Sign in to view and edit the shared schedule.</p>
+        <h1 style={{ fontFamily: "var(--font-display)", color: COLORS.navy, fontWeight: 700, fontSize: 28 }} className="mb-1">Cubby</h1>
+        <p style={{ color: "#6B6357" }} className="text-sm mb-6">Sign in to your school community.</p>
 
         {sent ? (
           <p style={{ color: COLORS.navy }} className="text-sm">

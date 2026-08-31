@@ -8,7 +8,8 @@
     "start": "next start",
     "postinstall": "prisma generate",
     "db:generate": "dotenv -e .env.local -- prisma generate",
-    "db:push": "dotenv -e .env.local -- prisma db push",
+    "db:migrate": "dotenv -e .env.local -- prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
     "db:seed": "dotenv -e .env.local -- node prisma/seed.mjs",
     "auth:generate": "dotenv -e .env.local -- npx @better-auth/cli generate"
   },

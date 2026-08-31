@@ -2,42 +2,27 @@
 
 import { useState, useEffect } from "react";
 import {
-  Plus, Trash2, ArrowUpRight, ArrowDownRight, Loader2,
-  LayoutList, Trophy, BookOpen, CalendarDays, LogOut, Fingerprint,
+  Plus, Trash2, Loader2,
+  LayoutList, Trophy, BookOpen, CalendarDays,
 } from "lucide-react";
-import { useSession, signOut, authClient } from "@/lib/auth-client";
-
-const COLORS = {
-  maroon: "#7A1B2E", maroonDeep: "#591420", navy: "#16213E", navyLight: "#29365C",
-  ivory: "#F7F2E7", parchment: "#EFE6D3", gold: "#B08D3E", ink: "#231F1B",
-  slate: "#6B6357", line: "#DDD1B4",
-};
-
-const KIDS = [
-  { id: "nyra", name: "Nyra Shah", initials: "NS" },
-  { id: "eve", name: "Eve Edwards", initials: "EE" },
-  { id: "jack", name: "Jack Baker", initials: "JB" },
-];
-const KID_ACCENT: Record<string, string> = { nyra: COLORS.maroon, eve: COLORS.navy, jack: COLORS.gold };
+import { useSchool } from "./SchoolProvider";
+import { KIDS, kidAccent, type Theme } from "@/lib/constants";
 
 const CATEGORIES = [
   { id: "sports", label: "Sports" },
   { id: "classes", label: "Classes" },
-  { id: "pickup", label: "Pickup & Drop-off" },
 ];
 
-const EMPTY_KID_DATA: any = { sports: [], classes: [], pickup: [] };
+const EMPTY_KID_DATA: any = { sports: [], classes: [] };
 
 const FORM_DEFAULTS: any = {
   sports: { title: "", day: "", time: "", location: "" },
   classes: { subject: "", day: "", time: "", room: "" },
-  pickup: { type: "Drop-off", person: "", day: "", time: "", notes: "" },
 };
 
 const EMPTY_COPY: any = {
   sports: "No games or practices on the board yet — add the first one below.",
   classes: "No classes logged yet — add a subject, day, and time below.",
-  pickup: "No pickups or drop-offs set — add who's covering and when below.",
 };
 
 const WEEKDAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -52,20 +37,20 @@ function classifyWeekday(dayText: string) {
   return null;
 }
 function entryLabel(catId: string, data: any) {
-  const title = catId === "sports" ? data.title : catId === "classes" ? data.subject : `${data.type} — ${data.person}`;
+  const title = catId === "sports" ? data.title : data.subject;
   const detail = [data.day, data.time].filter(Boolean).join(" ");
   return detail ? `${title} (${detail})` : title;
 }
 
-function Shield({ initials, active }: { initials: string; active: boolean }) {
+function Shield({ initials, active, theme }: { initials: string; active: boolean; theme: Theme }) {
   return (
     <div style={{
       width: 44, height: 50, clipPath: "polygon(50% 0%, 100% 15%, 100% 62%, 50% 100%, 0% 62%, 0% 15%)",
-      background: active ? `linear-gradient(160deg, ${COLORS.maroon}, ${COLORS.maroonDeep})` : COLORS.navyLight,
+      background: active ? `linear-gradient(160deg, ${theme.maroon}, ${theme.maroonDeep})` : theme.navyLight,
       display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
-      border: `1px solid ${active ? COLORS.gold : "transparent"}`,
+      border: `1px solid ${active ? theme.gold : "transparent"}`,
     }}>
-      <span style={{ fontFamily: "'Playfair Display', serif", fontWeight: 700, fontSize: 15, color: COLORS.ivory, letterSpacing: 1 }}>
+      <span style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15, color: theme.ivory, letterSpacing: 1 }}>
         {initials}
       </span>
     </div>
@@ -73,7 +58,8 @@ function Shield({ initials, active }: { initials: string; active: boolean }) {
 }
 
 export default function FamilySchedule() {
-  const { data: session } = useSession();
+  const { theme } = useSchool();
+  const COLORS = theme;
   const [activeKid, setActiveKid] = useState("summary");
   const [activeCat, setActiveCat] = useState("sports");
   const [data, setData] = useState<any>({ nyra: null, eve: null, jack: null });
@@ -94,8 +80,10 @@ export default function FamilySchedule() {
         try {
           const res = await fetch(`/api/kids/${kid.id}/entries`);
           const rows = await res.json();
-          const grouped: any = { sports: [], classes: [], pickup: [] };
-          for (const row of rows) grouped[row.category].push({ id: row.id, ...row.data });
+          const grouped: any = { sports: [], classes: [] };
+          // Retired categories (the old free-text "pickup") may still be in the
+          // database — skip them rather than indexing into an absent bucket.
+          for (const row of rows) grouped[row.category]?.push({ id: row.id, ...row.data });
           next[kid.id] = grouped;
         } catch {
           next[kid.id] = { ...EMPTY_KID_DATA };
@@ -113,7 +101,7 @@ export default function FamilySchedule() {
 
   async function addEntry(kidId: string, catId: string) {
     const form = forms[kidId][catId];
-    const required = catId === "sports" ? form.title.trim() : catId === "classes" ? form.subject.trim() : form.person.trim();
+    const required = catId === "sports" ? form.title.trim() : form.subject.trim();
     if (!required) return;
 
     setSavingKid(kidId);
@@ -147,35 +135,13 @@ export default function FamilySchedule() {
     }
   }
 
-  async function registerPasskey() {
-    await authClient.passkey.addPasskey();
-  }
-
   const kid = KIDS.find((k) => k.id === activeKid);
   const kidData = data[activeKid] || EMPTY_KID_DATA;
   const form = activeKid !== "summary" && activeKid !== "week" ? forms[activeKid][activeCat] : null;
 
   return (
-    <div style={{ background: COLORS.ivory, minHeight: "100vh", color: COLORS.ink }}>
-      <div style={{ background: COLORS.navy, borderBottom: `3px solid ${COLORS.gold}` }} className="px-5 py-6 sm:px-8 sm:py-8">
-        <div className="max-w-3xl mx-auto flex items-center gap-4">
-          <div style={{ width: 40, height: 40, borderRadius: "50%", border: `2px solid ${COLORS.gold}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-            <span style={{ fontFamily: "'Playfair Display', serif", color: COLORS.gold, fontWeight: 700, fontSize: 15 }}>FS</span>
-          </div>
-          <div className="flex-1">
-            <h1 style={{ fontFamily: "'Playfair Display', serif", color: COLORS.ivory, fontSize: 24, fontWeight: 700 }}>Family Roster</h1>
-            <p style={{ color: COLORS.parchment, fontSize: 13, marginTop: 2 }}>Signed in as {session?.user?.email ?? "..."}</p>
-          </div>
-          <button onClick={registerPasskey} title="Add a passkey for faster sign-in" style={{ color: COLORS.gold, background: "none", border: "none", cursor: "pointer" }}>
-            <Fingerprint size={20} />
-          </button>
-          <button onClick={() => signOut()} title="Sign out" style={{ color: COLORS.parchment, background: "none", border: "none", cursor: "pointer" }}>
-            <LogOut size={18} />
-          </button>
-        </div>
-      </div>
-
-      <div className="max-w-3xl mx-auto px-5 sm:px-8 py-6">
+    <>
+      <div className="shell py-7">
         {loadError && (
           <div style={{ background: "#FBEAEA", border: `1px solid ${COLORS.maroon}`, color: COLORS.maroonDeep }} className="rounded px-4 py-3 mb-5 text-sm">
             Couldn't load the schedule. Try refreshing.
@@ -200,7 +166,7 @@ export default function FamilySchedule() {
             const isActive = k.id === activeKid;
             return (
               <button key={k.id} onClick={() => setActiveKid(k.id)} className="flex flex-col items-center gap-2" style={{ background: "none", border: "none", cursor: "pointer" }}>
-                <Shield initials={k.initials} active={isActive} />
+                <Shield initials={k.initials} active={isActive} theme={theme} />
                 <span style={{ fontSize: 12, fontWeight: isActive ? 600 : 500, color: isActive ? COLORS.maroon : COLORS.slate, borderBottom: isActive ? `2px solid ${COLORS.gold}` : "2px solid transparent", paddingBottom: 2 }}>{k.name}</span>
               </button>
             );
@@ -212,7 +178,7 @@ export default function FamilySchedule() {
             {CATEGORIES.map((c) => {
               const isActive = c.id === activeCat;
               return (
-                <button key={c.id} onClick={() => setActiveCat(c.id)} style={{ background: "none", border: "none", cursor: "pointer", paddingBottom: 10, fontFamily: "'Playfair Display', serif", fontSize: 15, fontWeight: 700, color: isActive ? COLORS.navy : COLORS.slate, borderBottom: isActive ? `2px solid ${COLORS.maroon}` : "2px solid transparent", marginBottom: -1 }}>
+                <button key={c.id} onClick={() => setActiveCat(c.id)} style={{ background: "none", border: "none", cursor: "pointer", paddingBottom: 10, fontFamily: "var(--font-display)", fontSize: 15, fontWeight: 700, color: isActive ? COLORS.navy : COLORS.slate, borderBottom: isActive ? `2px solid ${COLORS.maroon}` : "2px solid transparent", marginBottom: -1 }}>
                   {c.label}
                 </button>
               );
@@ -228,13 +194,13 @@ export default function FamilySchedule() {
           <div className="grid sm:grid-cols-3 gap-4 mb-5">
             {KIDS.map((k) => {
               const kd = data[k.id] || EMPTY_KID_DATA;
-              const total = kd.sports.length + kd.classes.length + kd.pickup.length;
+              const total = kd.sports.length + kd.classes.length;
               return (
                 <div key={k.id} style={{ background: COLORS.parchment, border: `1px solid ${COLORS.line}`, borderRadius: 6 }} className="p-4">
                   <div className="flex items-center gap-2 mb-3">
-                    <Shield initials={k.initials} active={false} />
+                    <Shield initials={k.initials} active={false} theme={theme} />
                     <div>
-                      <p style={{ fontFamily: "'Playfair Display', serif", fontWeight: 700, fontSize: 14, color: COLORS.navy }}>{k.name}</p>
+                      <p style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 14, color: COLORS.navy }}>{k.name}</p>
                       <p style={{ fontSize: 11, color: COLORS.slate }}>{total} item{total === 1 ? "" : "s"}</p>
                     </div>
                   </div>
@@ -243,7 +209,6 @@ export default function FamilySchedule() {
                       <div className="flex items-center gap-1.5 mb-1">
                         {c.id === "sports" && <Trophy size={12} color={COLORS.maroon} />}
                         {c.id === "classes" && <BookOpen size={12} color={COLORS.maroon} />}
-                        {c.id === "pickup" && <ArrowUpRight size={12} color={COLORS.maroon} />}
                         <span style={{ fontSize: 11, fontWeight: 600, color: COLORS.maroon }} className="uppercase">{c.label}</span>
                       </div>
                       {kd[c.id].length === 0 ? <p style={{ fontSize: 12, color: COLORS.slate, fontStyle: "italic" }}>Nothing yet</p> : (
@@ -278,12 +243,12 @@ export default function FamilySchedule() {
                 <div className="flex gap-2 overflow-x-auto pb-2">
                   {WEEKDAY_LABELS.map((label, i) => (
                     <div key={label} style={{ minWidth: 128, background: COLORS.parchment, border: `1px solid ${COLORS.line}`, borderRadius: 6 }} className="p-3 flex-shrink-0">
-                      <p style={{ fontFamily: "'Playfair Display', serif", fontWeight: 700, fontSize: 13, color: COLORS.navy }} className="mb-2">{label}</p>
+                      <p style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 13, color: COLORS.navy }} className="mb-2">{label}</p>
                       {buckets[i].length === 0 ? <p style={{ fontSize: 11, color: COLORS.slate, fontStyle: "italic" }}>—</p> : (
                         <div className="space-y-1.5">
                           {buckets[i].map((item: any) => (
                             <div key={item.entry.id}>
-                              <span style={{ fontSize: 9.5, fontWeight: 700, color: KID_ACCENT[item.kidId] }}>{item.initials}</span>
+                              <span style={{ fontSize: 9.5, fontWeight: 700, color: kidAccent(theme, item.kidId) }}>{item.initials}</span>
                               <p style={{ fontSize: 11.5 }} className="truncate leading-tight">{entryLabel(item.catId, item.entry)}</p>
                             </div>
                           ))}
@@ -298,7 +263,7 @@ export default function FamilySchedule() {
                     <div className="space-y-1">
                       {unscheduled.map((item: any) => (
                         <p key={item.entry.id} style={{ fontSize: 12.5 }}>
-                          <span style={{ fontWeight: 700, color: KID_ACCENT[item.kidId] }}>{item.initials}</span> {entryLabel(item.catId, item.entry)}
+                          <span style={{ fontWeight: 700, color: kidAccent(theme, item.kidId) }}>{item.initials}</span> {entryLabel(item.catId, item.entry)}
                         </p>
                       ))}
                     </div>
@@ -315,19 +280,12 @@ export default function FamilySchedule() {
               ) : (
                 kidData[activeCat].map((entry: any, idx: number) => (
                   <div key={entry.id} style={{ borderTop: idx === 0 ? "none" : `1px solid ${COLORS.line}` }} className="flex items-center gap-3 px-5 py-3">
-                    {activeCat === "pickup" && (
-                      <span style={{ color: entry.type === "Drop-off" ? COLORS.navy : COLORS.maroon }}>
-                        {entry.type === "Drop-off" ? <ArrowDownRight size={16} /> : <ArrowUpRight size={16} />}
-                      </span>
-                    )}
                     <div className="flex-1 min-w-0">
                       <p style={{ fontWeight: 600, fontSize: 14 }} className="truncate">
-                        {activeCat === "sports" && entry.title}
-                        {activeCat === "classes" && entry.subject}
-                        {activeCat === "pickup" && `${entry.type} — ${entry.person}`}
+                        {activeCat === "sports" ? entry.title : entry.subject}
                       </p>
                       <p style={{ fontSize: 12.5, color: COLORS.slate }}>
-                        {[entry.day, entry.time, entry.location, entry.room, entry.notes].filter(Boolean).join(" · ")}
+                        {[entry.day, entry.time, entry.location, entry.room].filter(Boolean).join(" · ")}
                       </p>
                     </div>
                     <button onClick={() => removeEntry(activeKid, activeCat, entry.id)} style={{ background: "none", border: "none", cursor: "pointer", color: COLORS.slate }}>
@@ -359,18 +317,6 @@ export default function FamilySchedule() {
                   <input placeholder="Room / teacher" value={form.room} onChange={(e) => updateForm(activeKid, "classes", "room", e.target.value)} className="border rounded px-3 py-2 text-sm" style={{ borderColor: COLORS.line }} />
                 </div>
               )}
-              {activeCat === "pickup" && (
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                  <select value={form.type} onChange={(e) => updateForm(activeKid, "pickup", "type", e.target.value)} className="border rounded px-3 py-2 text-sm" style={{ borderColor: COLORS.line }}>
-                    <option>Drop-off</option>
-                    <option>Pick-up</option>
-                  </select>
-                  <input placeholder="Person" value={form.person} onChange={(e) => updateForm(activeKid, "pickup", "person", e.target.value)} className="border rounded px-3 py-2 text-sm" style={{ borderColor: COLORS.line }} />
-                  <input placeholder="Day / date" value={form.day} onChange={(e) => updateForm(activeKid, "pickup", "day", e.target.value)} className="border rounded px-3 py-2 text-sm" style={{ borderColor: COLORS.line }} />
-                  <input placeholder="Time" value={form.time} onChange={(e) => updateForm(activeKid, "pickup", "time", e.target.value)} className="border rounded px-3 py-2 text-sm" style={{ borderColor: COLORS.line }} />
-                  <input placeholder="Notes" value={form.notes} onChange={(e) => updateForm(activeKid, "pickup", "notes", e.target.value)} className="border rounded px-3 py-2 text-sm" style={{ borderColor: COLORS.line }} />
-                </div>
-              )}
 
               <button onClick={() => addEntry(activeKid, activeCat)} className="mt-3 flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded" style={{ background: COLORS.maroon, color: COLORS.ivory }}>
                 <Plus size={14} /> Add entry
@@ -381,6 +327,6 @@ export default function FamilySchedule() {
 
         <p style={{ color: COLORS.slate, fontSize: 11.5 }} className="mt-8 text-center">Changes save automatically for every signed-in parent.</p>
       </div>
-    </div>
+    </>
   );
 }

@@ -14,11 +14,77 @@ datasource db {
 // automatically, then `npm run db:push` to sync the database.
 
 model Kid {
-  id       String          @id @default(cuid())
-  slug     String          @unique // "nyra" | "eve" | "jack"
-  name     String
-  initials String
-  entries  ScheduleEntry[]
+  id          String          @id @default(cuid())
+  slug        String          @unique // "nyra" | "eve" | "jack"
+  name        String
+  initials    String
+  entries     ScheduleEntry[]
+  pickupSlots PickupSlot[]
+  parents     Parent[]
+}
+
+// A person who can be assigned pickup/drop-off duty. Most parents have no
+// account yet — `email` stays null until they're added to ALLOWED_PARENT_EMAILS
+// and sign in. Being listed here does NOT grant access; the allowlist does.
+model Parent {
+  id    String  @id @default(cuid())
+  slug  String  @unique
+  name  String
+  email String? @unique
+  kidId String
+  kid   Kid     @relation(fields: [kidId], references: [id], onDelete: Cascade)
+
+  assignedPrimary   PickupSlot[] @relation("SlotAssignee1")
+  assignedSecondary PickupSlot[] @relation("SlotAssignee2")
+
+  @@index([kidId])
+}
+
+// A non-school day. Slots on this date are kept but shown as a holiday, so
+// un-marking it restores whatever was already assigned.
+model Holiday {
+  id        String   @id @default(cuid())
+  date      DateTime @unique @db.Date
+  label     String
+  createdBy String? // email of the parent who marked it
+  createdAt DateTime @default(now())
+}
+
+model PickupSlot {
+  id   String   @id @default(cuid())
+  date DateTime @db.Date // calendar day only, never an instant
+  type String // "dropoff" | "pickup"
+
+  // null = the family-wide slot for this day; set = a per-kid override
+  kidId String?
+  kid   Kid?    @relation(fields: [kidId], references: [id], onDelete: Cascade)
+
+  // "<date>|<type>|family" or "<date>|<type>|<kidId>". A plain unique index on a
+  // non-null string, because Postgres treats NULLs as distinct and so would let
+  // duplicate family-wide rows through a compound unique on (date, type, kidId).
+  slotKey String @unique
+
+  // Minutes past midnight. Defaults come from lib/pickup.ts (6:45am / 4:30pm)
+  // and are editable per slot in 15-minute steps.
+  timeMinutes Int
+
+  // Up to two people can cover a slot (shown as "A / B"). Any signed-in parent
+  // may set or change these for anyone — it's a shared board — so `assignedBy`
+  // records who made the change.
+  assignedParentId String?
+  assignedParent   Parent? @relation("SlotAssignee1", fields: [assignedParentId], references: [id], onDelete: SetNull)
+
+  assignedParent2Id String?
+  assignedParent2   Parent? @relation("SlotAssignee2", fields: [assignedParent2Id], references: [id], onDelete: SetNull)
+
+  assignedBy String? // email of the parent who set it
+  assignedAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([date])
+  @@index([assignedParentId, date])
+  @@index([assignedParent2Id, date])
 }
 
 model ScheduleEntry {

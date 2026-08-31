@@ -1,7 +1,7 @@
-# Family Roster
+# Cubby
 
-A private, shared schedule app for Nyra, Eve, and Jack's parents — sports, classes,
-and pickup/drop-off, with Email sign-in link and Passkey login.
+A private school community app for parents — pickup/drop-off, the school calendar,
+sports and classes — with email sign-in links and Passkey login.
 
 ## What's inside
 - Next.js (App Router)
@@ -15,11 +15,11 @@ and pickup/drop-off, with Email sign-in link and Passkey login.
 cd family-schedule-app
 git init
 git add .
-git commit -m "Family roster app"
+git commit -m "Cubby app"
 ```
 Create a new **private** repo on GitHub, then:
 ```
-git remote add origin https://github.com/YOUR_USERNAME/family-roster.git
+git remote add origin https://github.com/YOUR_USERNAME/cubby.git
 git push -u origin main
 ```
 
@@ -37,9 +37,9 @@ git push -u origin main
 1. Go to https://vercel.com, sign up free, click "New Project," import your GitHub repo.
 2. Add these Environment Variables (from `.env.example`):
    `DATABASE_URL`, `ALLOWED_PARENT_EMAILS`, `RESEND_API_KEY`,
-   `PASSKEY_RP_ID` (your vercel domain, e.g. `family-roster.vercel.app`),
+   `PASSKEY_RP_ID` (your vercel domain, e.g. `cubby.vercel.app`),
    `BETTER_AUTH_SECRET` (any random 32+ character string),
-   `BETTER_AUTH_URL` (e.g. `https://family-roster.vercel.app`)
+   `BETTER_AUTH_URL` (e.g. `https://cubby.vercel.app`)
 3. Click Deploy.
 
 ## 5. Set up the database tables
@@ -47,7 +47,7 @@ After the first deploy, run locally (pointed at your production `DATABASE_URL`):
 ```
 npm install
 npm run auth:generate   # adds better-auth's User/Session/Passkey tables to schema.prisma
-npm run db:push         # creates all tables in Postgres
+npm run db:migrate      # applies migrations to your local/dev database
 npm run db:seed         # creates the Nyra/Eve/Jack records
 ```
 
@@ -55,6 +55,19 @@ npm run db:seed         # creates the Nyra/Eve/Jack records
 Visit your Vercel URL. The first sign-in for each parent must be by email
 (and their email must be in `ALLOWED_PARENT_EMAILS`). Once signed in, tap the
 fingerprint icon in the header to register a passkey for fast sign-in after that.
+
+## Database safety
+
+- **Local dev uses its own Neon branch**, never the production branch. Check
+  `.env.local` points at the dev branch before running anything against it.
+- **Never run `prisma db push` or `prisma migrate reset` against production.**
+  `db push` will drop columns and their data to force the schema to match.
+  Schema changes go: `npm run db:migrate` locally (generates a reviewable SQL
+  file in `prisma/migrations/`), commit it, then `npm run db:deploy` against
+  production, which only applies migrations that already exist.
+- Read the generated SQL before deploying. If it contains `DROP`, stop and
+  work out whether that's really intended.
+- Neon's instant restore covers the production branch as a last resort.
 
 ## Notes
 - To add or remove parents, just edit `ALLOWED_PARENT_EMAILS` in Vercel's project

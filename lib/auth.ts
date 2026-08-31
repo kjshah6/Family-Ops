@@ -6,7 +6,15 @@ import { Resend } from "resend";
 import { db } from "./db";
 import { isAllowedParent } from "./allowlist";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Built on first use, not at import. The Resend constructor throws when the key
+// is missing, and at module scope that turns a missing or mid-rotation
+// RESEND_API_KEY into a failed build for the entire app rather than one email
+// that doesn't send. Local dev never reaches this — it prints the link instead.
+let resendClient: Resend | null = null;
+function getResend(): Resend {
+  if (!resendClient) resendClient = new Resend(process.env.RESEND_API_KEY);
+  return resendClient;
+}
 
 // Dev-only: holds the most recently generated magic-link token so the local
 // /api/dev-login shortcut can complete sign-in without an inbox round-trip.
@@ -25,7 +33,7 @@ export const auth = betterAuth({
   plugins: [
     passkey({
       rpID: process.env.PASSKEY_RP_ID as string, // e.g. "your-app.vercel.app"
-      rpName: "Family Roster",
+      rpName: "Cubby",
     }),
     magicLink({
       sendMagicLink: async ({ email, url }: { email: string; url: string }) => {
@@ -39,10 +47,10 @@ export const auth = betterAuth({
           return;
         }
 
-        await resend.emails.send({
-          from: "Family Roster <onboarding@resend.dev>",
+        await getResend().emails.send({
+          from: "Cubby <onboarding@resend.dev>",
           to: email,
-          subject: "Sign in to Family Roster",
+          subject: "Sign in to Cubby",
           html: `<p>Click to sign in: <a href="${url}">${url}</a></p><p>This link expires in 5 minutes.</p>`,
         });
       },

@@ -1,6 +1,6 @@
 # Architecture
 
-Family Roster runs on two pipelines: one moves a code change from the editor
+Cubby runs on two pipelines: one moves a code change from the editor
 into production, the other moves a parent from typing their email to a
 signed-in session.
 
